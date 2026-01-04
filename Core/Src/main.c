@@ -17,7 +17,7 @@
  */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
-#include "main.h" // Test
+#include "main.h"
 #include "cmsis_os.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -114,8 +114,8 @@ const osThreadAttr_t InitTask_attributes = {
 osThreadId_t DataTransmitTasHandle;
 const osThreadAttr_t DataTransmitTas_attributes = {
   .name = "DataTransmitTas",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityBelowNormal6,
+  .stack_size = 265 * 4,
+  .priority = (osPriority_t) osPriorityBelowNormal,
 };
 /* Definitions for DataFilterTask */
 osThreadId_t DataFilterTaskHandle;
@@ -736,34 +736,25 @@ void Data_Transmit_Task(void *argument)
 		SEGGER_SYSVIEW_PrintfHost("DataTransmit");
 		osSemaphoreAcquire(UART1availableHandle, osWaitForever);
 
-		transmit_data.delimiter = 0xDEADC0DE;
+		// UART-Semaphore sichern
+		osSemaphoreAcquire(UART1availableHandle, osWaitForever);
 
-		// Rohdaten kopieren
-		transmit_data.acc_x = lsm6dsl_values.acc_x;
-		transmit_data.acc_y = lsm6dsl_values.acc_y;
-		transmit_data.acc_z = lsm6dsl_values.acc_z;
-		transmit_data.gyro_x = lsm6dsl_values.gyro_x;
-		transmit_data.gyro_y = lsm6dsl_values.gyro_y;
-		transmit_data.gyro_z = lsm6dsl_values.gyro_z;
-
-		transmit_data.mag_x = lis3mdl_values.x;
-		transmit_data.mag_y = lis3mdl_values.y;
-		transmit_data.mag_z = lis3mdl_values.z;
+		// Rohdaten kopieren (IMU + Magnetometer)
+		memcpy(&transmit_data.acc_x, &lsm6dsl_values.acc_x, 6 * sizeof(float));  // acc + gyro
+		memcpy(&transmit_data.mag_x, &lis3mdl_values.x, 3 * sizeof(float));
 
 		// Gefilterte Werte kopieren
-		transmit_data.acc_x_filtered = lsm6dsl_filtered_values.acc_x;
-		transmit_data.acc_y_filtered = lsm6dsl_filtered_values.acc_y;
-		transmit_data.acc_z_filtered = lsm6dsl_filtered_values.acc_z;
-		transmit_data.gyro_x_filtered = lsm6dsl_filtered_values.gyro_x;
-		transmit_data.gyro_y_filtered = lsm6dsl_filtered_values.gyro_y;
-		transmit_data.gyro_z_filtered = lsm6dsl_filtered_values.gyro_z;
+		memcpy(&transmit_data.acc_x_filtered, &lsm6dsl_filtered_values.acc_x, 6 * sizeof(float));
+		memcpy(&transmit_data.mag_x_filtered, &lis3mdl_filtered_values.x, 3 * sizeof(float));
 
-		transmit_data.mag_x_filtered = lis3mdl_filtered_values.x;
-		transmit_data.mag_y_filtered = lis3mdl_filtered_values.y;
-		transmit_data.mag_z_filtered = lis3mdl_filtered_values.z;
+		// Delimiter setzen
+		transmit_data.delimiter = 0xDEADC0DE;
 
+		// Daten per DMA senden
 		HAL_UART_Transmit_DMA(&huart1, (const uint8_t *)&transmit_data, sizeof(transmit_data));
-		__HAL_DMA_DISABLE_IT(huart1.hdmatx, DMA_IT_HT );
+
+		// Halb-Transmit Interrupt deaktivieren (nicht benötigt)
+		__HAL_DMA_DISABLE_IT(huart1.hdmatx, DMA_IT_HT);
 	  }
   /* USER CODE END Data_Transmit_Task */
 }
@@ -853,3 +844,11 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if (huart->Instance == USART1)
+    {
+        osSemaphoreRelease(UART1availableHandle);
+    }
+}

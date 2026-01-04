@@ -324,11 +324,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	{
 	case LSM6DSL_INT1_EXTI11_Pin:
 		osThreadFlagsSet(IMUTaskHandle, IMU_SENSOR_THREAD_ACTIVATE_FLAG);
-		/* check if data transmit is available */
-		if(osSemaphoreGetCount(UART1availableHandle) != 0)
-		{
-			osThreadFlagsSet(DataTransmitTasHandle, IMU_SENSOR_THREAD_ACTIVATE_FLAG);
-		}
 		SEGGER_SYSVIEW_PrintfHost("IMU");
 		break;
 	case LPS22HB_INT_DRDY_EXTI10_Pin:
@@ -341,11 +336,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		break;
 	case LSM3MDL_DRDY_EXTI8_Pin:
 		osThreadFlagsSet(MagnetoTaskHandle, MAG_SENSOR_THREAD_ACTIVATE_FLAG);
-		/* check if data transmit is available */
-		if(osSemaphoreGetCount(UART1availableHandle) != 0)
-		{
-			osThreadFlagsSet(DataTransmitTasHandle, MAG_SENSOR_THREAD_ACTIVATE_FLAG);
-		}
 		SEGGER_SYSVIEW_PrintfHost("Magneto");
 		break;
 	case VL53L0X_GPIO1_EXTI7_Pin:
