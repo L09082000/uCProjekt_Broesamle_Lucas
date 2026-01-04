@@ -17,7 +17,7 @@
  */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
-#include "main.h"
+#include "main.h" // Test
 #include "cmsis_os.h"
 
 /* Private includes ----------------------------------------------------------*/
