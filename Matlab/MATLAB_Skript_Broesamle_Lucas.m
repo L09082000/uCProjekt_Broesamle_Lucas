@@ -16,8 +16,8 @@ baudrate = 115200;
 serialPort = [];
 
 %% ----------------- Protokollparameter -------------------
-DELIMITER = single(123456.0);   
-NUM_FLOATS = 1 + 6 + 6 + 3 + 3;  
+DELIMITER = 0xDEADBEEF;
+NUM_FLOATS = 19;  
 PACKET_BYTES = NUM_FLOATS * 4;   
 
 %% ----------------- Speicher für Daten -------------------
