@@ -61,6 +61,10 @@ UART_HandleTypeDef huart1;
 DMA_HandleTypeDef hdma_usart1_rx;
 DMA_HandleTypeDef hdma_usart1_tx;
 
+// DEBUG!!!
+volatile uint32_t Debug_counter_filter = 0;
+volatile uint32_t Debug_counter_transmit = 0;
+
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
@@ -732,9 +736,10 @@ void Data_Transmit_Task(void *argument)
   /* Infinite loop */
   for(;;)
       {
+	  // DEBUG!!!
+	  	Debug_counter_transmit++;
 		osThreadFlagsWait(FILTERED_DATA_READY_FLAG, osFlagsWaitAny, osWaitForever);
 		SEGGER_SYSVIEW_PrintfHost("DataTransmit");
-		osSemaphoreAcquire(UART1availableHandle, osWaitForever);
 
 		// UART-Semaphore sichern
 		osSemaphoreAcquire(UART1availableHandle, osWaitForever);
@@ -771,6 +776,8 @@ void Data_Filter_Task(void *argument)
   /* USER CODE BEGIN Data_Filter_Task */
   for (;;)
   {
+	// DEBUG!!!
+	Debug_counter_filter++;
     uint32_t flags = osThreadFlagsWait(RAW_IMU_DATA_READY_FLAG | RAW_MAG_DATA_READY_FLAG, osFlagsWaitAny, osWaitForever);
 
     if (flags & RAW_IMU_DATA_READY_FLAG)
