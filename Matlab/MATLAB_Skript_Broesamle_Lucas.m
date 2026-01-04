@@ -1,4 +1,9 @@
 function STM32_LivePlot
+
+clc
+clear
+close all
+
 %% =========================================================
 % Live Plot STM32 Sensor Data (LSM6DSL + LIS3MDL)
 % Autor: Lucas Brösamle
@@ -123,46 +128,67 @@ btnDisconnect.Callback = @(~,~) stopAcquisition();
         addLogMessage('Verbindung getrennt');
     end
 
-    function acquireData()
+        function acquireData()
+        % Debug-Zähler
+        rx_packet_count = 0;
+    
         while isRunning
-            if serialPort.NumBytesAvailable < PACKET_BYTES
-                pause(0.001);
-                continue;
+            try
+                % Prüfen, ob genügend Floats verfügbar sind
+                if serialPort.NumBytesAvailable >= NUM_FLOATS
+                    % Floats direkt lesen (wie beim Prof)
+                    data = read(serialPort, NUM_FLOATS, 'single');
+    
+                    % Debug: ersten Wert anzeigen
+                    addLogMessage(sprintf('RX data(1) = %.3f', data(1)));
+    
+                    % Delimiter prüfen (optional, tolerant)
+                    if abs(data(1) - DELIMITER) < 1e-3
+                        rx_packet_count = rx_packet_count + 1;
+                        if mod(rx_packet_count, 10) == 0
+                            addLogMessage(sprintf('Gültige Pakete: %d', rx_packet_count));
+                        end
+    
+                        % === Daten entpacken ===
+                        acc_r   = data(2:4);
+                        gyro_r  = data(5:7);
+                        acc_f   = data(8:10);
+                        gyro_f  = data(11:13);
+                        mag_r   = data(14:16);
+                        mag_f   = data(17:19);
+    
+                        % Zeitachse
+                        sample_idx = sample_idx + 1;
+                        t(sample_idx) = sample_idx / fs;
+    
+                        % Daten speichern
+                        acc_raw(:,sample_idx)   = acc_r;
+                        acc_filt(:,sample_idx)  = acc_f;
+                        gyro_raw(:,sample_idx)  = gyro_r;
+                        gyro_filt(:,sample_idx) = gyro_f;
+                        mag_raw(:,sample_idx)   = mag_r;
+                        mag_filt(:,sample_idx)  = mag_f;
+    
+                        % Plot aktualisieren
+                        for i = 1:3
+                            set(hAcc(i),   'XData', t, 'YData', acc_raw(i,:));
+                            set(hAcc(i+3), 'XData', t, 'YData', acc_filt(i,:));
+                            set(hGyro(i),   'XData', t, 'YData', gyro_raw(i,:));
+                            set(hGyro(i+3), 'XData', t, 'YData', gyro_filt(i,:));
+                            set(hMag(i),   'XData', t, 'YData', mag_raw(i,:));
+                            set(hMag(i+3), 'XData', t, 'YData', mag_filt(i,:));
+                        end
+    
+                        drawnow limitrate
+                    else
+                        addLogMessage('Paket verworfen: falscher Delimiter');
+                    end
+                else
+                    pause(0.001); % kurz warten, wenn noch nicht genug Daten da sind
+                end
+            catch e
+                addLogMessage(['Fehler beim Lesen: ' e.message]);
             end
-
-            raw_bytes = read(serialPort, PACKET_BYTES, "uint8");
-            data = typecast(uint8(raw_bytes),'single');
-
-            if data(1) ~= DELIMITER
-                continue;
-            end
-
-            acc_r   = data(2:4);
-            gyro_r  = data(5:7);
-            acc_f   = data(8:10);
-            gyro_f  = data(11:13);
-            mag_r   = data(14:16);
-            mag_f   = data(17:19);
-
-            sample_idx = sample_idx + 1;
-            t(sample_idx) = sample_idx / fs;
-
-            acc_raw(:,sample_idx) = acc_r;
-            acc_filt(:,sample_idx) = acc_f;
-            gyro_raw(:,sample_idx) = gyro_r;
-            gyro_filt(:,sample_idx) = gyro_f;
-            mag_raw(:,sample_idx) = mag_r;
-            mag_filt(:,sample_idx) = mag_f;
-
-            for i=1:3
-                set(hAcc(i),'XData',t,'YData',acc_raw(i,:));
-                set(hAcc(i+3),'XData',t,'YData',acc_filt(i,:));
-                set(hGyro(i),'XData',t,'YData',gyro_raw(i,:));
-                set(hGyro(i+3),'XData',t,'YData',gyro_filt(i,:));
-                set(hMag(i),'XData',t,'YData',mag_raw(i,:));
-                set(hMag(i+3),'XData',t,'YData',mag_filt(i,:));
-            end
-            drawnow limitrate
         end
-    end
+        end
 end
