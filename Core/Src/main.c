@@ -141,7 +141,7 @@ const osSemaphoreAttr_t UART1available_attributes = {
 /* USER CODE BEGIN PV */
 uint8_t ucHeap[ configTOTAL_HEAP_SIZE ] __attribute__((section(".FreeRTOSHeap")));
 
-TRANSMIT_DATA transmit_data ={.delimiter = NAN};
+TRANSMIT_DATA transmit_data ={.delimiter = 123456.0f};
 
 extern LSM6DSL_VALUES lsm6dsl_values;
 extern LIS3MDL_VALUES lis3mdl_values;
