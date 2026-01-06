@@ -39,6 +39,12 @@ classdef MATLAB_Skript_Broesamle_Lucas < handle
         dt = 0.1
         dataSize = 19  % 1 Delimiter + 18 Werte
         delimiter = 0xDEADBEEF
+
+        % Byte-RX-Puffer
+        rxBuffer uint8 = uint8([])
+        frameSizeBytes = 19*4;   % 1 uint32 + 18 float32 = 76 Bytes
+        delimiterBytes = uint8([239 190 173 222]); % EF BE AD DE (Little Endian)
+
     end
     
     methods
@@ -117,68 +123,103 @@ classdef MATLAB_Skript_Broesamle_Lucas < handle
                 set(obj.txtStatus,'String','Verbindung fehlgeschlagen');
             end
         end
-        
-        % function acquireData(obj)
-        %     while obj.isRunning && isvalid(obj.fig)
-        %         try
-        %             if obj.serialPort.NumBytesAvailable >= obj.dataSize*4
-        %                 data = read(obj.serialPort,obj.dataSize,'single');
-        %                 if abs(data(1)-obj.delimiter)<1e6
-        %                     obj.processData(data);
-        %                 end
-        %             end
-        %             drawnow;
-        %         catch e
-        %             obj.addLogMessage(['Fehler beim Lesen: ' e.message]);
-        %         end
-        %     end
-        % end
 
         function acquireData(obj)
             while obj.isRunning && isvalid(obj.fig)
                 try
-                    % Prüfen ob Daten verfügbar sind
-                    if obj.serialPort.NumBytesAvailable >= obj.dataSize * 4
-                        %Debug!!!
-                        % === SCHRITT 1: Rohbytes lesen ===
-                        raw = read(obj.serialPort, obj.dataSize*4, 'uint8');
-                
-                        % Erste 16 Bytes anzeigen
-                        fprintf('RAW: ');
-                        fprintf('%02X ', raw(1:16));
-                        fprintf('\n');
-
-
-                        % 19 floats lesen (4 Bytes pro float)
-                        data = read(obj.serialPort, obj.dataSize, 'single');
-                        
-                        % Delimiter prüfen (optional)
-                        if abs(data(1) - obj.delimiter) < 1e6
-                            obj.processData(data);
+                    % Neue Bytes lesen
+                    if obj.serialPort.NumBytesAvailable > 0
+                        newBytes = read(obj.serialPort, obj.serialPort.NumBytesAvailable, "uint8");
+                        obj.rxBuffer = [obj.rxBuffer; newBytes];
+                    end
+        
+                    % Nach Delimiter suchen
+                    idx = [];
+                    bufLen = length(obj.rxBuffer);
+                    patLen = length(obj.delimiterBytes);
+                    
+                    for i = 1:(bufLen - patLen + 1)
+                        if isequal(obj.rxBuffer(i:i+patLen-1), obj.delimiterBytes)
+                            idx(end+1) = i;
                         end
                     end
-                    
-                    % GUI aktualisieren
-                    drawnow;
-                    
+        
+                    % Solange vollständige Frames vorhanden sind
+                    while ~isempty(idx) && (length(obj.rxBuffer) >= idx(1)+obj.frameSizeBytes-1)
+        
+                        % Frame extrahieren
+                        frame = obj.rxBuffer(idx(1):idx(1)+obj.frameSizeBytes-1);
+        
+                        % Buffer bereinigen
+                        obj.rxBuffer(1:idx(1)+obj.frameSizeBytes-1) = [];
+        
+                        % Frame dekodieren
+                        delimiterVal = typecast(frame(1:4), 'uint32');
+                        dataFloats   = typecast(frame(5:end), 'single');
+        
+                        if delimiterVal == obj.delimiter
+                            data = [double(delimiterVal); double(dataFloats)];
+                            obj.processData(data);
+                        end
+        
+                        idx = strfind(obj.rxBuffer.', obj.delimiterBytes);
+                    end
+        
+                    drawnow limitrate;
+        
                 catch e
                     disp(['Fehler beim Lesen: ' e.message]);
                 end
             end
         end
         
+        % function acquireData(obj)
+        %     while obj.isRunning && isvalid(obj.fig)
+        %         try
+        %             % Prüfen ob Daten verfügbar sind
+        %             if obj.serialPort.NumBytesAvailable >= obj.dataSize * 4
+        %                 % DEBUG!!!
+        %                 raw = read(obj.serialPort, obj.dataSize*4, 'uint8');
+        %                 fprintf('RAW: ');
+        %                 fprintf('%02X ', raw(1:16));
+        %                 fprintf('\n');
+        % 
+        %                 % Ersten Wert (Delimiter) als uint32 interpretieren
+        %                 delimiterVal = typecast(raw(1:4),'uint32');
+        % 
+        %                 % Restliche Bytes als floats interpretieren
+        %                 dataFloats = typecast(raw(5:end),'single');  % 18 floats
+        % 
+        %                 % Gesamten data-Vektor zusammenstellen (delimiter + floats)
+        %                 data = [double(delimiterVal); double(dataFloats)];
+        % 
+        %                 % Delimiter prüfen
+        %                 if data(1) == obj.delimiter
+        %                     obj.processData(data);
+        %                 end
+        %             end
+        % 
+        %             % GUI aktualisieren
+        %             drawnow;
+        % 
+        %         catch e
+        %             disp(['Fehler beim Lesen: ' e.message]);
+        %         end
+        %     end
+        % end
+        
         function processData(obj, data)
             obj.dataCount = obj.dataCount + 1;
             
-        % Rohwerte
-        acc = [data(2); data(3); data(4)];
-        gyro = [data(5); data(6); data(7)];
-        mag = [data(14); data(15); data(16)];
-    
-        % Gefilterte Werte
-        accFilter = [data(8); data(9); data(10)];
-        gyroFilter = [data(11); data(12); data(13)];
-        magFilter = [data(17); data(18); data(19)];
+            % Rohwerte
+            acc = [data(2); data(3); data(4)];
+            gyro = [data(5); data(6); data(7)];
+            mag = [data(14); data(15); data(16)];
+        
+            % Gefilterte Werte
+            accFilter = [data(8); data(9); data(10)];
+            gyroFilter = [data(11); data(12); data(13)];
+            magFilter = [data(17); data(18); data(19)];
             
             idx = mod(obj.dataCount-1,obj.maxBufferSize)+1;
             obj.timeBuffer(idx) = obj.dataCount*obj.dt;

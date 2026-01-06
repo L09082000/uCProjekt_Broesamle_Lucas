@@ -18,7 +18,7 @@ extern osSemaphoreId_t I2C2availableHandle;
 static LIS3MDL_RAW_VALUES lis3mdl_raw_values;
 LIS3MDL_VALUES lis3mdl_values;
 static LIS3MDL_CTRL lis3mdl_ctrl = {
-    .ctrl1.reg_value = 0xF4,  /* temperature sensor enabled, ultra high performance mode for x/y axis, ODR=80 Hz, all other values set to defaults */
+    .ctrl1.reg_value = 0xFC,  /* Temp on, Ultra-High-Performance XY, ODR = 155 Hz */
     .ctrl2.reg_value = 0x11,  /* all values set to default, FS = +/- 16gauss */
     .ctrl3.reg_value = 0x00,  /* continuous conversion, all other values set to defaults */
     .ctrl4.reg_value = 0x0C,  /* ultra high performance mode for z axis, all other values set to defaults */

@@ -10,6 +10,6 @@ function Start_MATLAB_Skript()
     
     % Initiale Log-Nachricht
     app.addLogMessage('IMU Visualisierung gestartet');
-    app.addLogMessage('Bitte COM-Port in Zeile 8 anpassen falls erforderlich');
+    app.addLogMessage('Bitte COM-Port in Zeile 5 anpassen falls erforderlich');
     app.addLogMessage('Klicken Sie auf "Verbinden" um Datenerfassung zu starten');
 end
