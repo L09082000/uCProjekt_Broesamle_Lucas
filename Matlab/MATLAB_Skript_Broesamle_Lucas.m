@@ -118,18 +118,51 @@ classdef MATLAB_Skript_Broesamle_Lucas < handle
             end
         end
         
+        % function acquireData(obj)
+        %     while obj.isRunning && isvalid(obj.fig)
+        %         try
+        %             if obj.serialPort.NumBytesAvailable >= obj.dataSize*4
+        %                 data = read(obj.serialPort,obj.dataSize,'single');
+        %                 if abs(data(1)-obj.delimiter)<1e6
+        %                     obj.processData(data);
+        %                 end
+        %             end
+        %             drawnow;
+        %         catch e
+        %             obj.addLogMessage(['Fehler beim Lesen: ' e.message]);
+        %         end
+        %     end
+        % end
+
         function acquireData(obj)
             while obj.isRunning && isvalid(obj.fig)
                 try
-                    if obj.serialPort.NumBytesAvailable >= obj.dataSize*4
-                        data = read(obj.serialPort,obj.dataSize,'single');
-                        if abs(data(1)-obj.delimiter)<1e6
+                    % Prüfen ob Daten verfügbar sind
+                    if obj.serialPort.NumBytesAvailable >= obj.dataSize * 4
+                        %Debug!!!
+                        % === SCHRITT 1: Rohbytes lesen ===
+                        raw = read(obj.serialPort, obj.dataSize*4, 'uint8');
+                
+                        % Erste 16 Bytes anzeigen
+                        fprintf('RAW: ');
+                        fprintf('%02X ', raw(1:16));
+                        fprintf('\n');
+
+
+                        % 19 floats lesen (4 Bytes pro float)
+                        data = read(obj.serialPort, obj.dataSize, 'single');
+                        
+                        % Delimiter prüfen (optional)
+                        if abs(data(1) - obj.delimiter) < 1e6
                             obj.processData(data);
                         end
                     end
+                    
+                    % GUI aktualisieren
                     drawnow;
+                    
                 catch e
-                    obj.addLogMessage(['Fehler beim Lesen: ' e.message]);
+                    disp(['Fehler beim Lesen: ' e.message]);
                 end
             end
         end

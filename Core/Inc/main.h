@@ -120,7 +120,12 @@ void Error_Handler(void);
 #define FILTERED_DATA_READY_FLAG             (1U << 7)   // 0x80
 
 typedef struct {
-	float	delimiter;
+    /* Delimiter zur Synchronisation des seriellen Datenstroms.
+     * Markiert den Beginn eines gültigen Datenframes.
+     * Als uint32_t definiert, um ein eindeutiges und stabiles Bitmuster
+     * zu übertragen (Float-Werte sind hierfür ungeeignet).
+     */
+	uint32_t delimiter;
 	// LSM6DSL Rohdaten
 	float acc_x;
 	float acc_y;
