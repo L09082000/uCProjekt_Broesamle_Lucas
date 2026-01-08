@@ -18,8 +18,8 @@ extern osSemaphoreId_t I2C2availableHandle;
 static LSM6DSL_RAW_VALUES lsm6dsl_raw_values;
 LSM6DSL_VALUES lsm6dsl_values;
 static LSM6DSL_CTRL1 lsm6dsl_ctrl = {
-    .ctrl1.reg_value = 0x54,  /* CTRL1_XL: ODR 104 Hz, FS ±16g */
-    .ctrl2.reg_value = 0x5C,  /* CTRL2_G: ODR 104 Hz, FS ±2000°/s */
+    .ctrl1.reg_value = 0x40,  /* ODR = 104Hz for acc, all other values set to defaults */
+    .ctrl2.reg_value = 0x40,  /* ODR = 104Hz for gyro, all other values set to defaults */
     .ctrl3.reg_value = 0x44,  /* BDU and autoincrement active, all other values set to defaults */
     .ctrl4.reg_value = 0x28,  /* DRDY_MASK = 1, all interrupts to pin int1, all other values set to defaults */
     .ctrl5.reg_value = 0x00,  /* all values set to defaults */

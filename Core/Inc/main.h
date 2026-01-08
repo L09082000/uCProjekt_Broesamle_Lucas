@@ -125,7 +125,7 @@ typedef struct {
      * Als uint32_t definiert, um ein eindeutiges und stabiles Bitmuster
      * zu übertragen (Float-Werte sind hierfür ungeeignet).
      */
-	uint32_t delimiter;
+	float delimiter;
 	// LSM6DSL Rohdaten
 	float acc_x;
 	float acc_y;
@@ -134,6 +134,11 @@ typedef struct {
 	float gyro_y;
 	float gyro_z;
 
+	// LIS3MDL Rohdaten
+	float mag_x;
+	float mag_y;
+	float mag_z;
+
 	// LSM6DSL gefilterte Werte
 	float acc_x_filtered;
 	float acc_y_filtered;
@@ -141,11 +146,6 @@ typedef struct {
 	float gyro_x_filtered;
 	float gyro_y_filtered;
 	float gyro_z_filtered;
-
-	// LIS3MDL Rohdaten
-	float mag_x;
-	float mag_y;
-	float mag_z;
 
 	// LIS3MDL gefilterte Werte
 	float mag_x_filtered;
