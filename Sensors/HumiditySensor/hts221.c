@@ -1,8 +1,5 @@
 /*
  * HTS221.c
- *
- *  Created on: May 25, 2021
- *      Author: MarkusKrug
  */
 
 #include <stdbool.h>

@@ -1,9 +1,7 @@
 /*
  * LIS3MDL.c
- *
- *  Created on: May 26, 2021
- *      Author: MarkusKrug
  */
+
 #include <stdbool.h>
 #include <string.h>
 

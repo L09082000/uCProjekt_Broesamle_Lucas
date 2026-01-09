@@ -1,3 +1,7 @@
+/*
+ * VL52I0X.c
+ */
+
 #include "main.h"
 #include "vl53l0x.h"
 #include "vl53l0x/vl53l0x_api.h"
@@ -50,7 +54,7 @@ VL53L0X_Error vl53l0x_initialize(void)
     	  if (ret_value == VL53L0X_ERROR_NONE)
     	  {
     		  Dev.Present = 1;
-    		  SetupContinousIntMeasurement(pDev,200000); /* period given in usec ->200msec that is required for 'performance mode' */
+    		  SetupContinousIntMeasurement(pDev,200000); /* period in µsec -> 5 Hz */
     	  }
     	}
 	  }
@@ -67,9 +71,9 @@ VL53L0X_Error vl53l0x_initialize(void)
 VL53L0X_Error SetupContinousIntMeasurement(VL53L0X_Dev_t *pDev, int period)
 {
 	VL53L0X_Error ret_value = 1;
-	FixPoint1616_t LimitCheckCurrent;
-	uint32_t refSpadCount;
-	uint8_t isApertureSpads;
+//	FixPoint1616_t LimitCheckCurrent;
+//	uint32_t refSpadCount;
+//	uint8_t isApertureSpads;
 	uint8_t VhvSettings;
 	uint8_t PhaseCal;
 

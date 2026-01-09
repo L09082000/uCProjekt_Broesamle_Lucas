@@ -1,8 +1,5 @@
 /*
  * LSM6DSL.c
- *
- *  Created on: May 26, 2021
- *      Author: MarkusKrug
  */
 
 #include "lsm6dsl.h"
@@ -113,7 +110,7 @@ HAL_StatusTypeDef LSM6DSL_data_ready(void)
   }
   /* release here to allow other tasks to access the I2C2 as early as possible */
   osSemaphoreRelease(I2C2availableHandle);
-  // todo magic numbers entfernen
+
   lsm6dsl_values.temperature =
       lsm6dsl_raw_values.raw_temperature / 256.0 + 25.0;
   lsm6dsl_values.acc_x =

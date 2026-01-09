@@ -73,56 +73,56 @@ osThreadId_t IMUTaskHandle;
 const osThreadAttr_t IMUTask_attributes = {
   .name = "IMUTask",
   .stack_size = 256 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityAboveNormal1,
 };
 /* Definitions for MagnetoTask */
 osThreadId_t MagnetoTaskHandle;
 const osThreadAttr_t MagnetoTask_attributes = {
   .name = "MagnetoTask",
   .stack_size = 256 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityAboveNormal2,
 };
 /* Definitions for ToFTask */
 osThreadId_t ToFTaskHandle;
 const osThreadAttr_t ToFTask_attributes = {
   .name = "ToFTask",
   .stack_size = 256 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityNormal2,
 };
 /* Definitions for BaroTask */
 osThreadId_t BaroTaskHandle;
 const osThreadAttr_t BaroTask_attributes = {
   .name = "BaroTask",
   .stack_size = 256 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityBelowNormal1,
 };
 /* Definitions for HumidityTask */
 osThreadId_t HumidityTaskHandle;
 const osThreadAttr_t HumidityTask_attributes = {
   .name = "HumidityTask",
   .stack_size = 256 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityBelowNormal1,
 };
 /* Definitions for InitTask */
 osThreadId_t InitTaskHandle;
 const osThreadAttr_t InitTask_attributes = {
   .name = "InitTask",
   .stack_size = 512 * 4,
-  .priority = (osPriority_t) osPriorityNormal1,
+  .priority = (osPriority_t) osPriorityHigh,
 };
 /* Definitions for DataTransmitTas */
 osThreadId_t DataTransmitTasHandle;
 const osThreadAttr_t DataTransmitTas_attributes = {
   .name = "DataTransmitTas",
-  .stack_size = 265 * 4,
-  .priority = (osPriority_t) osPriorityBelowNormal,
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow1,
 };
 /* Definitions for DataFilterTask */
 osThreadId_t DataFilterTaskHandle;
 const osThreadAttr_t DataFilterTask_attributes = {
   .name = "DataFilterTask",
   .stack_size = 256 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityLow2,
 };
 /* Definitions for I2C2available */
 osSemaphoreId_t I2C2availableHandle;
@@ -564,22 +564,25 @@ void StartDefaultTask(void *argument)
 void IMU_Task(void *argument)
 {
   /* USER CODE BEGIN IMU_Task */
-  HAL_StatusTypeDef HAL_status = HAL_OK;
+  HAL_StatusTypeDef HAL_status;
   /* Infinite loop */
   for(;;)
   {
-	  // Auf Aktivierungsflag warten
-	  osThreadFlagsWait(IMU_SENSOR_THREAD_ACTIVATE_FLAG, osFlagsWaitAll, osWaitForever);
+	// Auf Aktivierungsflag warten
+	osThreadFlagsWait(IMU_SENSOR_THREAD_ACTIVATE_FLAG, osFlagsWaitAll, osWaitForever);
 
-	  // I2C-Bus sichern
-	  osSemaphoreAcquire(I2C2availableHandle, osWaitForever);
+	// I2C-Bus sichern
+	osSemaphoreAcquire(I2C2availableHandle, osWaitForever);
 
-	  // Prüfen, ob neue IMU-Daten vorliegen
-	  HAL_status = LSM6DSL_data_ready();
-	  osSemaphoreRelease(I2C2availableHandle);
+	// Prüfen, ob neue IMU-Daten vorliegen
+	HAL_status = LSM6DSL_data_ready();
+	osSemaphoreRelease(I2C2availableHandle);
 
-	  // Flagge: neue Sensorwerte vorhanden
-	  osThreadFlagsSet(DataFilterTaskHandle, RAW_IMU_DATA_READY_FLAG);
+	if (HAL_status == HAL_OK)
+	{
+		osThreadFlagsSet(DataFilterTaskHandle,
+						 RAW_IMU_DATA_READY_FLAG);
+	}
   }
   /* USER CODE END IMU_Task */
 }
@@ -594,22 +597,25 @@ void IMU_Task(void *argument)
 void Magneto_Task(void *argument)
 {
   /* USER CODE BEGIN Magneto_Task */
-  HAL_StatusTypeDef HAL_status = HAL_OK;
+  HAL_StatusTypeDef HAL_status;
   /* Infinite loop */
   for(;;)
   {
-	  // Auf Aktivierungsflag warten
-	  osThreadFlagsWait(MAG_SENSOR_THREAD_ACTIVATE_FLAG, osFlagsWaitAll, osWaitForever);
+	// Auf Aktivierungsflag warten
+	osThreadFlagsWait(MAG_SENSOR_THREAD_ACTIVATE_FLAG, osFlagsWaitAll, osWaitForever);
 
-	  // I2C-Bus sichern
-	  osSemaphoreAcquire(I2C2availableHandle, osWaitForever);
+	// I2C-Bus sichern
+	osSemaphoreAcquire(I2C2availableHandle, osWaitForever);
 
-	  // Prüfen, ob neue Magnetometer-Daten vorliegen
-	  HAL_status = LIS3MDL_data_ready();
-	  osSemaphoreRelease(I2C2availableHandle);
+	// Prüfen, ob neue Magnetometer-Daten vorliegen
+	HAL_status = LIS3MDL_data_ready();
+	osSemaphoreRelease(I2C2availableHandle);
 
-	  // Flagge: neue Sensorwerte vorhanden
-	  osThreadFlagsSet(DataFilterTaskHandle, RAW_MAG_DATA_READY_FLAG);
+	if (HAL_status == HAL_OK)
+	{
+		osThreadFlagsSet(DataFilterTaskHandle,
+		RAW_MAG_DATA_READY_FLAG);
+	}
   }
   /* USER CODE END Magneto_Task */
 }
@@ -624,19 +630,21 @@ void Magneto_Task(void *argument)
 void ToF_Task(void *argument)
 {
   /* USER CODE BEGIN ToF_Task */
-  HAL_StatusTypeDef HAL_status = HAL_OK;
+  HAL_StatusTypeDef HAL_status;
   /* Infinite loop */
   for(;;)
   {
-	  // Auf Aktivierungsflag warten
-	  osThreadFlagsWait(TOF_SENSOR_THREAD_ACTIVATE_FLAG, osFlagsWaitAll, osWaitForever);
+	// Auf Aktivierungsflag warten
+	osThreadFlagsWait(TOF_SENSOR_THREAD_ACTIVATE_FLAG, osFlagsWaitAll, osWaitForever);
 
-	  // I2C-Bus sichern
-	  osSemaphoreAcquire(I2C2availableHandle, osWaitForever);
+	// I2C-Bus sichern
+	osSemaphoreAcquire(I2C2availableHandle, osWaitForever);
 
-	  // Prüfen, ob neue Magnetometer-Daten vorliegen
-	  HAL_status = VL53L0X_data_ready();
-	  osSemaphoreRelease(I2C2availableHandle);
+	// Prüfen, ob neue Magnetometer-Daten vorliegen
+	HAL_status = VL53L0X_data_ready();
+	osSemaphoreRelease(I2C2availableHandle);
+
+	(void)HAL_status;
   }
   /* USER CODE END ToF_Task */
 }
@@ -651,19 +659,21 @@ void ToF_Task(void *argument)
 void Baro_Task(void *argument)
 {
   /* USER CODE BEGIN Baro_Task */
-  HAL_StatusTypeDef HAL_status = HAL_OK;
+  HAL_StatusTypeDef HAL_status;
   /* Infinite loop */
   for(;;)
   {
-	  // Auf Aktivierungsflag warten
-	  osThreadFlagsWait(BARO_SENSOR_THREAD_ACTIVATE_FLAG, osFlagsWaitAll, osWaitForever);
+	// Auf Aktivierungsflag warten
+	osThreadFlagsWait(BARO_SENSOR_THREAD_ACTIVATE_FLAG, osFlagsWaitAll, osWaitForever);
 
-	  // I2C-Bus sichern
-	  osSemaphoreAcquire(I2C2availableHandle, osWaitForever);
+	// I2C-Bus sichern
+	osSemaphoreAcquire(I2C2availableHandle, osWaitForever);
 
-	  // Prüfen, ob neue Magnetometer-Daten vorliegen
-	  HAL_status = LPS22HB_data_ready();
-	  osSemaphoreRelease(I2C2availableHandle);
+	// Prüfen, ob neue Magnetometer-Daten vorliegen
+	HAL_status = LPS22HB_data_ready();
+	osSemaphoreRelease(I2C2availableHandle);
+
+	(void)HAL_status;
   }
   /* USER CODE END Baro_Task */
 }
@@ -678,18 +688,20 @@ void Baro_Task(void *argument)
 void Humidity_Task(void *argument)
 {
   /* USER CODE BEGIN Humidity_Task */
-  HAL_StatusTypeDef HAL_status = HAL_OK;
+  HAL_StatusTypeDef HAL_status;
   /* Infinite loop */
   for(;;)
   {
-	  // Auf Aktivierungsflag warten
-	  osThreadFlagsWait(HUMIDITY_SENSOR_THREAD_ACTIVATE_FLAG, osFlagsWaitAll, osWaitForever);
+	// Auf Aktivierungsflag warten
+	osThreadFlagsWait(HUMIDITY_SENSOR_THREAD_ACTIVATE_FLAG, osFlagsWaitAll, osWaitForever);
 
-	  // I2C-Bus sichern
-	  osSemaphoreAcquire(I2C2availableHandle, osWaitForever);
-	  // Prüfen, ob neue Magnetometer-Daten vorliegen
-	  HAL_status = HTS221_data_ready();
-	  osSemaphoreRelease(I2C2availableHandle);
+	// I2C-Bus sichern
+	osSemaphoreAcquire(I2C2availableHandle, osWaitForever);
+	// Prüfen, ob neue Magnetometer-Daten vorliegen
+	HAL_status = HTS221_data_ready();
+	osSemaphoreRelease(I2C2availableHandle);
+
+	(void)HAL_status;
   }
   /* USER CODE END Humidity_Task */
 }
@@ -873,11 +885,3 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
-
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
-{
-    if (huart->Instance == USART1)
-    {
-        osSemaphoreRelease(UART1availableHandle);
-    }
-}
