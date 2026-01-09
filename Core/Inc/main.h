@@ -125,7 +125,7 @@ typedef struct {
      * Als uint32_t definiert, um ein eindeutiges und stabiles Bitmuster
      * zu übertragen (Float-Werte sind hierfür ungeeignet).
      */
-	float delimiter;
+	uint32_t delimiter;		// Frame-Start
 	// LSM6DSL Rohdaten
 	float acc_x;
 	float acc_y;

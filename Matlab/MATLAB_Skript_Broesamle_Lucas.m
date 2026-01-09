@@ -16,8 +16,9 @@ classdef MATLAB_Skript_Broesamle_Lucas < handle
         txtLog  % Neues Log-Textfeld
 
         % Datenstruktur
-        dataSize = 19  % 19 floats pro Paket
-        delimiter = 0xDEADBEEF  % Beispiel-Delimiter
+        delimiter  = uint32(3735928559);   % oder hex2dec('DEADBEEF')
+        dataFloats = 18;
+        frameBytes = 76;  % 4 + 18*4
         
         % Datenpuffer
         maxBufferSize = 1000
@@ -37,11 +38,14 @@ classdef MATLAB_Skript_Broesamle_Lucas < handle
         hGyroFilt
         hMagFilt
 
-        
         % Laufzeitvariablen
         isRunning = false
         dataCount = 0
         dt = 0.1   % 100ms Abtastrate
+
+        % Statistik
+        receivedBytes = 0;       % insgesamt empfangene Bytes
+        txtByteCount   % UI-Feld für die Byte-Anzeige
     end
     
     methods
@@ -90,7 +94,7 @@ classdef MATLAB_Skript_Broesamle_Lucas < handle
             % Log-Textfeld mit Scrollbar (unten rechts)
             obj.txtLog = uicontrol('Style', 'listbox', ...
                 'String', {}, ...
-                'Position', [1070 80 510 320], ...
+                'Position', [150 120 1300 300], ...
                 'FontName', 'Courier New', ...
                 'FontSize', 8, ...
                 'HorizontalAlignment', 'left', ...
@@ -99,7 +103,7 @@ classdef MATLAB_Skript_Broesamle_Lucas < handle
             
             uicontrol('Style', 'text', ...
                 'String', 'System-Log:', ...
-                'Position', [1070 405 100 20], ...
+                'Position', [150 430 100 20], ...
                 'HorizontalAlignment', 'left', ...
                 'FontWeight', 'bold');
             
@@ -118,7 +122,14 @@ classdef MATLAB_Skript_Broesamle_Lucas < handle
             % Statustext
             obj.txtStatus = uicontrol('Style', 'text', ...
                 'String', 'Bereit zum Verbinden', ...
-                'Position', [850 20 740 40], ...
+                'Position', [280 20 740 40], ...
+                'HorizontalAlignment', 'left', ...
+                'FontSize', 10);
+
+            % Byte-Zähler Textfeld (rechts oben / neben Status)
+            obj.txtByteCount = uicontrol('Style', 'text', ...
+                'String', 'Empfangene Bytes: 0', ...
+                'Position', [280 0 740 40], ...
                 'HorizontalAlignment', 'left', ...
                 'FontSize', 10);
         end
@@ -138,8 +149,17 @@ classdef MATLAB_Skript_Broesamle_Lucas < handle
             try
                 % Serielle Verbindung öffnen
                 obj.serialPort = serialport(obj.portName, obj.baudRate);
-                configureTerminator(obj.serialPort, "LF");
                 obj.serialPort.Timeout = 1;
+
+                % Byte-Counter zurücksetzen
+                obj.dataCount     = 0;
+                obj.receivedBytes = 0;
+
+                % Log hinzufügen: Counter zurückgesetzt
+                obj.addLogMessage('Byte-Counter auf 0 gesetzt');
+                
+                % UI initialisieren
+                set(obj.txtByteCount, 'String', 'Empfangene Bytes: 0');
                 
                 obj.isRunning = true;
                 set(obj.btnConnect, 'Enable', 'off');
@@ -157,48 +177,80 @@ classdef MATLAB_Skript_Broesamle_Lucas < handle
                 set(obj.txtStatus, 'String', 'Verbindung fehlgeschlagen');
             end
         end
+
+        function frame = readFrame(obj)
+            frame = [];
         
+            while obj.serialPort.NumBytesAvailable >= obj.frameBytes
+        
+                % 1) 4 Byte Header lesen
+                hdr = read(obj.serialPort, 4, 'uint8');
+                hdrVal = typecast(uint8(hdr), 'uint32');
+
+                % Byte-Counter
+                obj.receivedBytes = obj.receivedBytes + obj.frameBytes;
+                
+                % Direkt UI aktualisieren
+                if isvalid(obj.txtByteCount)
+                    set(obj.txtByteCount, 'String', sprintf('Empfangene Bytes: %d', obj.receivedBytes));
+                end
+        
+                if hdrVal == obj.delimiter
+                    % 2) Payload lesen (18 floats)
+                    payload = read(obj.serialPort, obj.dataFloats*4, 'uint8');
+                    frame = typecast(uint8(payload), 'single');
+                    return;
+                else
+                    % 3) Resynchronisation
+                    read(obj.serialPort, 1, 'uint8');
+                end
+            end
+        end
+
         function acquireData(obj)
             while obj.isRunning && isvalid(obj.fig)
                 try
-                    % Prüfen ob Daten verfügbar sind
-                    if obj.serialPort.NumBytesAvailable >= obj.dataSize * 4
-                        % 19 floats lesen (4 Bytes pro float)
-                        data = read(obj.serialPort, obj.dataSize, 'single');
-                        
-                        % Delimiter prüfen (optional)
-                        if abs(data(1) - obj.delimiter) < 1e6
-                            obj.processData(data);
-                        end
+                    frame = obj.readFrame();
+        
+                    if ~isempty(frame)
+                        obj.processData(frame);
                     end
-                    
-                    % GUI aktualisieren
+        
                     drawnow;
-                    
+        
                 catch e
                     disp(['Fehler beim Lesen: ' e.message]);
                 end
             end
         end
         
-        function processData(obj, data)
+        function processData(obj, frame)
             obj.dataCount = obj.dataCount + 1;
             
             % Daten extrahieren
             % Rohwerte
-            acc = [data(2); data(3); data(4)];
-            gyro = [data(5); data(6); data(7)];
-            mag = [data(8); data(9); data(10)];
+            acc  = frame(1:3);
+            gyro = frame(4:6);
+            mag  = frame(7:9);
         
             % Gefilterte Werte
-            accFilter = [data(11); data(12); data(13)];
-            gyroFilter = [data(14); data(15); data(16)];
-            magFilter = [data(17); data(18); data(19)];
+            accFilter  = frame(10:12);
+            gyroFilter = frame(13:15);
+            magFilter  = frame(16:18);
             
-            % Magnetometer Koordinatensystem anpassen (X und Y invertiert)
+            % Anpassung des Magnetometer-Koordinatensystems (X und Y invertiert)
+            % Hintergrund:
+            % Das Magnetometer (z. B. LIS3MDL) besitzt aufgrund seiner internen
+            % Achsdefinition bzw. der mechanischen Montage auf dem PCB ein gegenüber
+            % dem Fahrzeug- bzw. IMU-Koordinatensystem um 180° gedrehtes X-Y-System.
+            % Durch die Invertierung der X- und Y-Achse wird eine Rotation um die
+            % Z-Achse um 180° realisiert, sodass das Magnetometer-Koordinatensystem
+            % mit dem Koordinatensystem von Beschleunigungs- und Drehratensensor
+            % übereinstimmt.
             mag(1) = -mag(1);  % X-Achse invertieren
             mag(2) = -mag(2);  % Y-Achse invertieren
-            % Z-Achse bleibt unverändert
+            magFilter(1) = -magFilter(1);
+            magFilter(2) = -magFilter(2);
             
             % Daten in Buffer speichern
             idx = mod(obj.dataCount - 1, obj.maxBufferSize) + 1;

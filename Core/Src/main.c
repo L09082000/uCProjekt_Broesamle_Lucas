@@ -137,7 +137,12 @@ const osSemaphoreAttr_t UART1available_attributes = {
 /* USER CODE BEGIN PV */
 uint8_t ucHeap[ configTOTAL_HEAP_SIZE ] __attribute__((section(".FreeRTOSHeap")));
 
-TRANSMIT_DATA transmit_data ={.delimiter = NAN};
+uint32_t max_cycles_acc = 0;
+uint32_t max_cycles_mag = 0;
+float runtime_us_acc = 0.0f;
+float runtime_us_mag = 0.0f;
+
+TRANSMIT_DATA transmit_data ={.delimiter = 0xDEADBEEF};
 
 extern LSM6DSL_VALUES lsm6dsl_values;
 extern LIS3MDL_VALUES lis3mdl_values;
@@ -185,7 +190,9 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;  // Debug Trace aktivieren
+  DWT->CYCCNT = 0;                                 // Zähler zurücksetzen
+  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;             // Zähler starten
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -765,20 +772,46 @@ void Data_Transmit_Task(void *argument)
 void Data_Filter_Task(void *argument)
 {
   /* USER CODE BEGIN Data_Filter_Task */
+  uint32_t start, stop;
+
   for (;;)
   {
     uint32_t flags = osThreadFlagsWait(RAW_IMU_DATA_READY_FLAG | RAW_MAG_DATA_READY_FLAG, osFlagsWaitAny, osWaitForever);
 
     if (flags & RAW_IMU_DATA_READY_FLAG)
     {
-      // Filter nur aufrufen, globale Variable wird direkt aktualisiert
+      __disable_irq();              // Interrupts kurz deaktivieren
+      start = DWT->CYCCNT;
+
       LSM6DSL_Filter_Update(lsm6dsl_values);
+
+      stop = DWT->CYCCNT;
+      __enable_irq();
+
+      uint32_t cycles = stop - start;
+      if(cycles > max_cycles_acc) max_cycles_acc = cycles;
+
+      // Laufzeit in µs berechnen und global speichern
+      runtime_us_acc = (float)cycles / SystemCoreClock * 1e6;
+      SEGGER_SYSVIEW_PrintfHost("LSM6DSL Filter: %lu cycles = %.2f us", cycles, runtime_us_acc);
     }
 
     if (flags & RAW_MAG_DATA_READY_FLAG)
     {
-      // Filter nur aufrufen, globale Variable wird direkt aktualisiert
+      __disable_irq();
+      start = DWT->CYCCNT;
+
       LIS3MDL_Filter_Update(lis3mdl_values);
+
+      stop = DWT->CYCCNT;
+      __enable_irq();
+
+      uint32_t cycles = stop - start;
+      if(cycles > max_cycles_mag) max_cycles_mag = cycles;
+
+      // Laufzeit in µs berechnen und global speichern
+      runtime_us_mag = (float)cycles / SystemCoreClock * 1e6;
+      SEGGER_SYSVIEW_PrintfHost("LIS3MDL Filter: %lu cycles = %.2f us", cycles, runtime_us_mag);
     }
 
     osThreadFlagsSet(DataTransmitTasHandle, FILTERED_DATA_READY_FLAG);

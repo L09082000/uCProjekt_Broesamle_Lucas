@@ -10,6 +10,6 @@ function Start_MATLAB_Skript_Broesamle_Lucas()
     
     % Initiale Log-Nachricht
     app.addLogMessage('IMU Visualisierung gestartet');
-    app.addLogMessage('Bitte COM-Port in Zeile 8 anpassen falls erforderlich');
+    app.addLogMessage('Bitte COM-Port in Zeile 5 anpassen, aktuell auf "COM4" eingestellt.');
     app.addLogMessage('Klicken Sie auf "Verbinden" um Datenerfassung zu starten');
 end
