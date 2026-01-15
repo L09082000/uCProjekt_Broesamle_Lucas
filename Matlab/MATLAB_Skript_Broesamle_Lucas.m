@@ -2,7 +2,7 @@ classdef MATLAB_Skript_Broesamle_Lucas < handle
     properties
         % Serielle Verbindung
         serialPort
-        portName = 'COM4'  % Anpassen an Ihren Port
+        portName = 'COM4'  % Anpassen an persönlichen Port
         baudRate = 115200
         
         % GUI Elemente
@@ -50,13 +50,22 @@ classdef MATLAB_Skript_Broesamle_Lucas < handle
     
     methods
         function obj = MATLAB_Skript_Broesamle_Lucas()
+            % Alle vorherigen Fenster und Daten löschen
+            close all;
+            clc;
+
             obj.initGUI();
             obj.initBuffers();
+
+            % Initiale Log-Nachrichten
+            obj.addLogMessage('Messdaten-Visualisierung gestartet');
+            obj.addLogMessage('COM-Port aktuell: "COM4" – bei Bedarf anpassen');
+            obj.addLogMessage('Klicken Sie auf "Verbinden" um Datenerfassung zu starten');
         end
         
         function initGUI(obj)
             % Hauptfenster erstellen
-            obj.fig = figure('Name', 'IMU Visualisierung & Kalibrierung', ...
+            obj.fig = figure('Name', 'Messdaten-Visualisierung', ...
                 'NumberTitle', 'off', ...
                 'Position', [50 50 1600 900], ...
                 'CloseRequestFcn', @(~,~)obj.closeApp());
