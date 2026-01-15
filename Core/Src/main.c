@@ -114,7 +114,7 @@ const osThreadAttr_t InitTask_attributes = {
 osThreadId_t DataTransmitTasHandle;
 const osThreadAttr_t DataTransmitTas_attributes = {
   .name = "DataTransmitTas",
-  .stack_size = 128 * 4,
+  .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityLow1,
 };
 /* Definitions for DataFilterTask */
@@ -274,7 +274,7 @@ int main(void)
   /* USER CODE BEGIN RTOS_EVENTS */
   SEGGER_SYSVIEW_Conf();
   SEGGER_SYSVIEW_Start();
-  SEGGER_SYSVIEW_PrintfHost("START");
+  SEGGER_SYSVIEW_PrintfHost("PROGRAMMSTART");
   /* USER CODE END RTOS_EVENTS */
 
   /* Start scheduler */
@@ -752,7 +752,7 @@ void Data_Transmit_Task(void *argument)
   for(;;)
       {
 		osThreadFlagsWait(FILTERED_DATA_READY_FLAG, osFlagsWaitAny, osWaitForever);
-		SEGGER_SYSVIEW_PrintfHost("DataTransmit");
+		SEGGER_SYSVIEW_PrintfHost("Datenuebertragung");
 
 		// UART-Semaphore sichern
 		osSemaphoreAcquire(UART1availableHandle, osWaitForever);
@@ -803,9 +803,14 @@ void Data_Filter_Task(void *argument)
       uint32_t cycles = stop - start;
       if(cycles > max_cycles_acc) max_cycles_acc = cycles;
 
-      // Laufzeit in µs berechnen und global speichern
+      // Laufzeit in µs berechnen
       runtime_us_acc = (float)cycles / SystemCoreClock * 1e6;
-      SEGGER_SYSVIEW_PrintfHost("LSM6DSL Filter: %lu cycles = %.2f us", cycles, runtime_us_acc);
+
+      // Laufzeit auf 2 Nachkommastellen in Integer umrechnen
+      uint32_t runtime_us_acc_int = (uint32_t)(runtime_us_acc * 100.0f);
+
+      // Ausgabe an SEGGER SYSVIEW (ASCII-kompatibel, 2 Nachkommastellen)
+      SEGGER_SYSVIEW_PrintfHost("LSM6DSL-Filterlaufzeit: %lu CPU-Zyklen (%lu.%02lu us)", cycles, runtime_us_acc_int / 100, runtime_us_acc_int % 100);
     }
 
     if (flags & RAW_MAG_DATA_READY_FLAG)
@@ -821,11 +826,15 @@ void Data_Filter_Task(void *argument)
       uint32_t cycles = stop - start;
       if(cycles > max_cycles_mag) max_cycles_mag = cycles;
 
-      // Laufzeit in µs berechnen und global speichern
+      // Laufzeit in µs berechnen
       runtime_us_mag = (float)cycles / SystemCoreClock * 1e6;
-      SEGGER_SYSVIEW_PrintfHost("LIS3MDL Filter: %lu cycles = %.2f us", cycles, runtime_us_mag);
-    }
 
+      // Laufzeit auf 2 Nachkommastellen in Integer umrechnen
+      uint32_t runtime_us_mag_int = (uint32_t)(runtime_us_mag * 100.0f);
+
+      // Ausgabe an SEGGER SYSVIEW (ASCII-kompatibel, 2 Nachkommastellen)
+      SEGGER_SYSVIEW_PrintfHost("LIS3MDL-Filterlaufzeit: %lu CPU-Zyklen (%lu.%02lu us)", cycles, runtime_us_mag_int / 100, runtime_us_mag_int % 100);
+    }
     osThreadFlagsSet(DataTransmitTasHandle, FILTERED_DATA_READY_FLAG);
   }
   /* USER CODE END Data_Filter_Task */

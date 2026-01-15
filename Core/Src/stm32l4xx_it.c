@@ -233,7 +233,6 @@ void DMA1_Channel4_IRQHandler(void)
   /* USER CODE END DMA1_Channel4_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_usart1_tx);
   /* USER CODE BEGIN DMA1_Channel4_IRQn 1 */
-  osSemaphoreRelease(UART1availableHandle);
   SEGGER_SYSVIEW_RecordExitISR();
   /* USER CODE END DMA1_Channel4_IRQn 1 */
 }
@@ -324,26 +323,40 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	{
 	case LSM6DSL_INT1_EXTI11_Pin:
 		osThreadFlagsSet(IMUTaskHandle, IMU_SENSOR_THREAD_ACTIVATE_FLAG);
-		SEGGER_SYSVIEW_PrintfHost("IMU");
+		SEGGER_SYSVIEW_PrintfHost("IMU-Task");
 		break;
 	case LPS22HB_INT_DRDY_EXTI10_Pin:
 		osThreadFlagsSet(BaroTaskHandle, BARO_SENSOR_THREAD_ACTIVATE_FLAG);
-		SEGGER_SYSVIEW_PrintfHost("Baro");
+		SEGGER_SYSVIEW_PrintfHost("Baro-Task");
 		break;
 	case HTS221_DRDY_EXTI15_Pin:
 		osThreadFlagsSet(HumidityTaskHandle, HUMIDITY_SENSOR_THREAD_ACTIVATE_FLAG);
-		SEGGER_SYSVIEW_PrintfHost("Humidity");
+		SEGGER_SYSVIEW_PrintfHost("Humidity-Task");
 		break;
 	case LSM3MDL_DRDY_EXTI8_Pin:
 		osThreadFlagsSet(MagnetoTaskHandle, MAG_SENSOR_THREAD_ACTIVATE_FLAG);
-		SEGGER_SYSVIEW_PrintfHost("Magneto");
+		SEGGER_SYSVIEW_PrintfHost("Magneto-Task");
 		break;
 	case VL53L0X_GPIO1_EXTI7_Pin:
 		osThreadFlagsSet(ToFTaskHandle, TOF_SENSOR_THREAD_ACTIVATE_FLAG);
-		SEGGER_SYSVIEW_PrintfHost("ToF");
+		SEGGER_SYSVIEW_PrintfHost("ToF-Task");
 		break;
 	default:
 		break;
 	}
 }
+
+/**
+  * @brief  UART TX complete callback
+  * @note   Wird von HAL_UART_IRQHandler() aufgerufen
+  */
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if (huart->Instance == USART1)
+    {
+        osSemaphoreRelease(UART1availableHandle);
+        SEGGER_SYSVIEW_PrintfHost("UART1 TX fertiggestellt");
+    }
+}
+
 /* USER CODE END 1 */
